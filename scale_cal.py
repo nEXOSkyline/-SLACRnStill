@@ -11,6 +11,7 @@ import struct
 def data_to_float32(data) :
     #return struct.unpack('<f',struct.pack('=I',concatData(data)))[0]
     return concatData(data)
+
 def concatData (data):
     msb=struct.pack('=I',data[0])
     lsb=struct.pack('=I',data[1]<<16)
@@ -21,6 +22,7 @@ class arc_it(Frame) :
     def on_closing(self) :
         self.run = False
         os._exit(0)
+
     def tare(self):
         if self.coil_state == 0x00 :
           self.coil_state = 0xff
@@ -32,6 +34,7 @@ class arc_it(Frame) :
         #response = self.ser.recv(12).decode('iso-8859-1')
         self.mbc.write_coil(0x0a,self.coil_state, unit=1)
         self.read_mass()
+
     def set_zero(self) :
         zero = float(self.z_entry.get())
         z_bytes = struct.pack('<f',zero)
@@ -41,6 +44,7 @@ class arc_it(Frame) :
         #self.ser.send( msg.encode('iso-8859-1') )
         #response = self.ser.recv(10).decode('iso-8859-1')#comment out these lines later
         self.read_mass()
+
     def set_cal(self) :
         cal_factor = float(self.cal_entry.get())
         cal_bytes = struct.pack('>f',cal_factor)
@@ -56,6 +60,24 @@ class arc_it(Frame) :
         #self.ser.send( msg.encode('iso-8859-1') )
         #response = self.ser.recv(10).decode('iso-8859-1')#comment out these lines later 
         self.read_mass()
+
+    def get_cal(self) :
+        # Added by Cas-lab
+        # retriev cal factor
+        self.read_mass()
+
+    def calibrate(self):
+        # added by Cas-lab
+        self.set_cal()
+        self.read_mass()
+        cal_factor = float(self.cal_entry.get())
+        a = self.mbc.read_holding_registers(2,) # get mass from holding registers
+        m = self.read_mass()
+        new_valu = float((a/m) * cal_factor) # calibration multiplier
+        
+        # self.mbc.write_register(2,lsInt,unit=1)
+        # self.mbc.write_register(3,msInt,unit=1)
+        # self.mbc.read_holding_registers(2,)
 
     def read_mass(self) :
         #msg = chr(0x00) + chr(0x00) + chr(0x00) + chr(0x00) + chr(0x00) + chr(0x06) + chr(0x00)#trans protocol length unit
@@ -77,8 +99,6 @@ class arc_it(Frame) :
         while True:
             self.mbc.read_holding_registers(0,2,unit=1)
             time.sleep(1.0)
-  
-
         
     def __init__(self):
         self.window = Tk()
@@ -101,7 +121,7 @@ class arc_it(Frame) :
 
         self.coil_state = 0x00
 
-        Button(self.window,text='Send',command=self.set_cal).grid(row=0,column=2)
+        # Button(self.window,text='Send',command=self.set_cal).grid(row=0,column=2)
         #Button(self.window,text='Send',command=self.set_zero).grid(row=1,column=2)
         Button(self.window,text='TARE',command=self.tare).grid(row=3,column=1)
  
