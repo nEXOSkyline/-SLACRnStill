@@ -54,26 +54,29 @@ class arc_it(Frame) :
         msInt = int.from_bytes(cal_bytes[0:2], 'big')
         self.mbc.write_register(2,lsInt,unit=1)
         self.mbc.write_register(3,msInt,unit=1)
-                        #int(bytearray((msb[0:2]+lsb[2:4]).encode()))
-       # msg = chr(0x00) + chr(0x00) + chr(0x00) + chr(0x00) + chr(0x00) + chr(0x0a) + chr(0x00)#trans protocol length unit
-       # msg = msg + chr(0x10) + chr(0x00) + chr(0x02) + chr(0x00) + chr(0x02) + chr(cal_bytes[0]) + chr(cal_bytes[1]) + chr(cal_bytes[2]) + chr(cal_bytes[3])
+        #int(bytearray((msb[0:2]+lsb[2:4]).encode()))
+        # msg = chr(0x00) + chr(0x00) + chr(0x00) + chr(0x00) + chr(0x00) + chr(0x0a) + chr(0x00)#trans protocol length unit
+        # msg = msg + chr(0x10) + chr(0x00) + chr(0x02) + chr(0x00) + chr(0x02) + chr(cal_bytes[0]) + chr(cal_bytes[1]) + chr(cal_bytes[2]) + chr(cal_bytes[3])
         #self.ser.send( msg.encode('iso-8859-1') )
         #response = self.ser.recv(10).decode('iso-8859-1')#comment out these lines later 
         self.read_mass()
 
     def get_cal(self) :
         # Added by Cas-lab
-        # retriev cal factor
+        # retriev cal factor. What/how is the calibration factor?
+        # Why would I want to just get the calculation factor here? Why do I need two functions to do the calibration?
+        cal_factor = float(self.cal_entry.get())
         self.read_mass()
 
     def calibrate(self):
         # added by Cas-lab
-        self.set_cal()
         self.read_mass()
-        cal_factor = float(self.cal_entry.get())
+        cal_factor = float(self.cal_entry.get()) # Get the calculation factor to use below
+        regval = self.mbc.read_holding_registers(0,2,unit=1) 
+        mass_val = data_to_float32(regval.registers)
         a = self.mbc.read_holding_registers(2,) # get mass from holding registers
         m = self.read_mass()
-        new_valu = float((a/m) * cal_factor) # calibration multiplier
+        calc_valu = float((a/m) * cal_factor) # calibration multiplier
         
         # self.mbc.write_register(2,lsInt,unit=1)
         # self.mbc.write_register(3,msInt,unit=1)
@@ -108,15 +111,17 @@ class arc_it(Frame) :
         #self.ser.connect(('localhost',502))
         self.mbc = ModbusTcpClient('10.0.0.4')
         Label(self.window, text='calibration factor').grid(row=0)
-        #Label(self.window, text='zero offset').grid(row=1)
+        # Label(self.window, text='zero offset').grid(row=1)
         Label(self.window, text='kg').grid(row=2)
         
         self.cal_entry = Entry(self.window)
+        # self.cal.display = self.get_cal()
         self.z_entry = Entry(self.window)
         self.mass_disp = Text(self.window,height=1,width=20)
 
-        self.cal_entry.grid(row=0,column=1)
+        # self.cal_entry.grid(row=0,column=1)
         #self.z_entry.grid(row=1,column=1)
+        self.cal_display.grid(row=0,column=1)
         self.mass_disp.grid(row=2,column=1)
 
         self.coil_state = 0x00
