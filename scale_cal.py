@@ -61,26 +61,27 @@ class arc_it(Frame) :
         #response = self.ser.recv(10).decode('iso-8859-1')#comment out these lines later 
         self.read_mass()
 
-    def get_cal(self) :
-        # Added by Cas-lab
-        # retriev cal factor. What/how is the calibration factor?
-        # Why would I want to just get the calculation factor here? Why do I need two functions to do the calibration?
-        cal_factor = float(self.cal_entry.get())
-        self.read_mass()
-
     def calibrate(self):
         # added by Cas-lab
-        self.read_mass()
         cal_factor = float(self.cal_entry.get()) # Get the calculation factor to use below
-        regval = self.mbc.read_holding_registers(0,2,unit=1) 
-        mass_val = data_to_float32(regval.registers)
-        a = self.mbc.read_holding_registers(2,) # get mass from holding registers
-        m = self.read_mass()
-        calc_valu = float((a/m) * cal_factor) # calibration multiplier
+        # cal_factor = data_to_float32(self.cal_entry.get()) # Get the calculation factor to use below
+        # mass_val = data_to_float32(regval.registers)
+        a = self.mbc.read_holding_registers(0,2,unit=1) # get mass from holding registers
+        a = data_to_float32(a.registers)
+        m = float(self.digital_scale_mass.get())
+        print('printing values of a and m--->',a,m)
+        calc_valu = float((m/a) * cal_factor) # calibration multiplier
+        calc_valu = data_to_float32((m/a) * cal_factor) # calibration multiplier
+        cal_bytes = struct.pack('>f',calc_valu)
+        lsInt = int.from_bytes(cal_bytes[2:4], 'big')
+        msInt = int.from_bytes(cal_bytes[0:2], 'big')
+        self.mbc.write_register(2,lsInt,unit=1)
+        self.mbc.write_register(3,msInt,unit=1)
+        self.cal_entry.delete('1.0', 'end')
+        self.cal_entry.insert('1.0',str(calc_valu))
+        self.read_mass()
+        print('printing calc_value--->', calc_valu)
         
-        # self.mbc.write_register(2,lsInt,unit=1)
-        # self.mbc.write_register(3,msInt,unit=1)
-        # self.mbc.read_holding_registers(2,)
 
     def read_mass(self) :
         #msg = chr(0x00) + chr(0x00) + chr(0x00) + chr(0x00) + chr(0x00) + chr(0x06) + chr(0x00)#trans protocol length unit
@@ -106,29 +107,33 @@ class arc_it(Frame) :
     def __init__(self):
         self.window = Tk()
         self.window.geometry('360x128')
-        self.window.title( 'scale calibrator' )
+        self.window.title( 'Scale Calibrator' )
         #self.ser = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
         #self.ser.connect(('localhost',502))
         self.mbc = ModbusTcpClient('10.0.0.4')
-        Label(self.window, text='calibration factor').grid(row=0)
+        Label(self.window, text='Calibration Factor').grid(row=0)
         # Label(self.window, text='zero offset').grid(row=1)
         Label(self.window, text='kg').grid(row=2)
         
         self.cal_entry = Entry(self.window)
-        # self.cal.display = self.get_cal()
-        self.z_entry = Entry(self.window)
+        # self.cal_entry.insert('1.0','10000')
+        self.cal_display = Entry(self.window)
+        # self.z_entry = Entry(self.window)
+        self.digital_scale_mass = Entry(self.window)
         self.mass_disp = Text(self.window,height=1,width=20)
 
-        # self.cal_entry.grid(row=0,column=1)
+        self.cal_entry.grid(row=0,column=1)
         #self.z_entry.grid(row=1,column=1)
+        self.digital_scale_mass.grid(row=3,column=1)
         self.cal_display.grid(row=0,column=1)
         self.mass_disp.grid(row=2,column=1)
 
         self.coil_state = 0x00
 
         # Button(self.window,text='Send',command=self.set_cal).grid(row=0,column=2)
-        #Button(self.window,text='Send',command=self.set_zero).grid(row=1,column=2)
-        Button(self.window,text='TARE',command=self.tare).grid(row=3,column=1)
+        # Button(self.window,text='Send',command=self.set_zero).grid(row=1,column=2)
+        Button(self.window,text='TARE',command=self.tare).grid(row=4,column=1)
+        Button(self.window,text='Calibrate',command=self.calibrate).grid(row=3,column=0)
  
         self.window.protocol( 'WM_DELETE_WINDOW', self.on_closing )
         self.keepalivethread=threading.Thread(target=self.keepAlive)
