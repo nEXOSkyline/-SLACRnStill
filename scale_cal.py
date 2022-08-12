@@ -63,15 +63,17 @@ class arc_it(Frame) :
 
     def calibrate(self):
         # added by Cas-lab
-        cal_factor = float(self.cal_entry.get()) # Get the calculation factor to use below
+        regval = self.mbc.read_holding_registers(2,2,unit=1)
+        cal_factor = data_to_float32(regval.registers)
+        # cal_factor = float(self.cal_entry.get()) # Get the calculation factor to use below
         # cal_factor = data_to_float32(self.cal_entry.get()) # Get the calculation factor to use below
         # mass_val = data_to_float32(regval.registers)
         a = self.mbc.read_holding_registers(0,2,unit=1) # get mass from holding registers
-        a = data_to_float32(a.registers)
+        a = data_to_float32(a.registers)[0]
         m = float(self.digital_scale_mass.get())
         print('printing values of a and m--->',a,m)
-        calc_valu = float((m/a) * cal_factor) # calibration multiplier
-        calc_valu = data_to_float32((m/a) * cal_factor) # calibration multiplier
+        calc_valu = float((m/a) * cal_factor[0]) # calibration multiplier
+        # calc_valu = data_to_float32((m/a) * cal_factor) # calibration multiplier
         cal_bytes = struct.pack('>f',calc_valu)
         lsInt = int.from_bytes(cal_bytes[2:4], 'big')
         msInt = int.from_bytes(cal_bytes[0:2], 'big')
@@ -114,10 +116,11 @@ class arc_it(Frame) :
         Label(self.window, text='Calibration Factor').grid(row=0)
         # Label(self.window, text='zero offset').grid(row=1)
         Label(self.window, text='kg').grid(row=2)
-        
-        self.cal_entry = Entry(self.window)
-        # self.cal_entry.insert('1.0','10000')
-        self.cal_display = Entry(self.window)
+        self.cal_entry = Text(self.window, height=1, width=20)
+        cal_factor = self.mbc.read_holding_registers(2,2, unit=1)
+        cal_factor = data_to_float32(cal_factor.registers)
+        cal_factor = str(cal_factor[0])
+        self.cal_entry.insert('1.0', cal_factor)
         # self.z_entry = Entry(self.window)
         self.digital_scale_mass = Entry(self.window)
         self.mass_disp = Text(self.window,height=1,width=20)
@@ -125,7 +128,7 @@ class arc_it(Frame) :
         self.cal_entry.grid(row=0,column=1)
         #self.z_entry.grid(row=1,column=1)
         self.digital_scale_mass.grid(row=3,column=1)
-        self.cal_display.grid(row=0,column=1)
+        # self.cal_display.grid(row=0,column=1)
         self.mass_disp.grid(row=2,column=1)
 
         self.coil_state = 0x00
